@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineMax - Cartelera de Cine</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
+                    colors: {
+                        brand: { red: '#e50914', darkRed: '#b81d24', gold: '#ffb703', dark: '#0f172a', card: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col justify-between selection:bg-brand-red selection:text-white custom-scrollbar">
+
+    <!-- Navigation Header -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+            
+            <a href="#" class="flex items-center gap-2 group shrink-0">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-red to-amber-500 flex items-center justify-center shadow-lg shadow-brand-red/30 group-hover:scale-105 transition-transform">
+                    <i class="fa-solid font-bold fa-film text-white text-xl"></i>
+                </div>
+                <span class="text-2xl font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-brand-red">
+                    CINE<span class="text-brand-red">MAX</span>
+                </span>
+            </a>
+
+            <!-- Search Bar (Mejorada con Spinner) -->
+            <div class="hidden md:flex flex-1 max-w-md relative">
+                <input type="text" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Buscar película o género..." 
+                    class="w-full bg-slate-800/80 text-sm text-slate-200 pl-10 pr-4 py-2.5 rounded-full border border-slate-700/60 focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red transition-all">
+                <i id="searchIcon" class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-sm transition-opacity"></i>
+                <i id="searchSpinner" class="fa-solid fa-circle-notch fa-spin absolute left-3.5 top-3.5 text-brand-red text-sm opacity-0 transition-opacity"></i>
+            </div>
+
+            <!-- Actions Right (Añadido botón de i18n) -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Botón Español / Inglés -->
+                <button id="langBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-sm font-bold transition-colors w-14 justify-center">
+                    ES
+                </button>
+
+                <button id="favsBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-sm font-medium transition-colors">
+                    <i class="fa-solid fa-heart text-brand-red"></i>
+                    <span class="hidden sm:inline" data-i18n="favorites">Favoritos</span>
+                    <span id="favCount" class="bg-brand-red text-white text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Search Bar -->
+        <div class="md:hidden px-4 pb-3">
+            <div class="relative">
+                <input type="text" id="searchInputMobile" data-i18n-placeholder="searchPlaceholder" placeholder="Buscar película..." 
+                    class="w-full bg-slate-800 text-sm text-slate-200 pl-10 pr-4 py-2 rounded-full border border-slate-700 focus:outline-none focus:border-brand-red">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow">
+        <!-- Hero Section -->
+        <section class="relative w-full h-[420px] md:h-[480px] bg-slate-900 overflow-hidden flex items-end">
+            <div id="heroBg" class="absolute inset-0 bg-cover bg-center transition-all duration-700 scale-105">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent"></div>
+                <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-transparent"></div>
+            </div>
+
+            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 w-full z-10 flex flex-col items-start gap-3">
+                <span data-i18n="featured" class="bg-brand-red/90 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider backdrop-blur-sm">
+                    Estreno Destacado
+                </span>
+                <h1 id="heroTitle" class="text-3xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-md max-w-2xl">
+                    ...
+                </h1>
+                <p id="heroOverview" class="text-slate-300 text-sm md:text-base line-clamp-2 max-w-2xl font-light"></p>
+                
+                <div id="heroMeta" class="flex flex-wrap items-center gap-4 text-xs md:text-sm text-slate-300 my-1 hidden">
+                    <span class="flex items-center gap-1 text-brand-gold font-bold">
+                        <i class="fa-solid fa-star"></i> <span id="heroRating"></span>
+                    </span>
+                    <span id="heroGenre" class="bg-slate-800/80 border border-slate-700/80 px-2.5 py-1 rounded-md"></span>
+                    <span id="heroYear" class="text-slate-400"></span>
+                </div>
+
+                <div class="flex items-center gap-3 mt-2">
+                    <button id="heroBookBtn" class="bg-brand-red hover:bg-brand-darkRed text-white px-6 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-lg shadow-brand-red/30 transition-all transform hover:-translate-y-0.5">
+                        <i class="fa-solid fa-ticket"></i> <span data-i18n="buyTickets">Comprar Entradas</span>
+                    </button>
+                    <button id="heroDetailBtn" class="bg-slate-800/90 hover:bg-slate-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm flex items-center gap-2 border border-slate-700 transition-all">
+                        <i class="fa-solid fa-circle-info"></i> <span data-i18n="moreInfo">Más Info</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters -->
+        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+                <div class="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 custom-scrollbar">
+                    <button class="filter-tab active px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap bg-brand-red text-white transition-all" data-filter="all" data-i18n="all">Todas</button>
+                    <button class="filter-tab px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-all" data-filter="Action" data-i18n="action">Acción</button>
+                    <button class="filter-tab px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-all" data-filter="Drama" data-i18n="drama">Drama</button>
+                    <button class="filter-tab px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-all" data-filter="Comedy" data-i18n="comedy">Comedia</button>
+                    <button class="filter-tab px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-all" data-filter="Sci-Fi" data-i18n="scifi">Ciencia Ficción</button>
+                </div>
+                <div class="flex items-center gap-3 text-xs text-slate-400 self-end md:self-auto">
+                    <span id="movieCount" class="font-medium text-slate-300" data-i18n="loadingCatalog">Cargando catálogo...</span>
+                    <button id="refreshBtn" title="Actualizar" class="p-2 bg-slate-900 hover:bg-slate-800 rounded-lg text-slate-300 border border-slate-800 transition-colors">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grid -->
+            <div id="movieGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 mt-8"></div>
+
+            <div id="emptyState" class="hidden text-center py-16">
+                <div class="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mx-auto text-slate-500 mb-4 text-2xl">
+                    <i class="fa-solid fa-film"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-white" data-i18n="noMovies">No se encontraron películas</h3>
+                <p class="text-sm text-slate-400 mt-1" data-i18n="tryAdjusting">Prueba ajustando los términos de búsqueda o filtros.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 text-slate-400 text-sm py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-clapperboard text-brand-red"></i>
+                <span class="font-bold text-white tracking-wide">CineMax</span>
+                <span class="text-xs text-slate-500" data-i18n="footerRights">© 2026 Todos los derechos reservados.</span>
+            </div>
+            <div class="flex items-center gap-6 text-xs text-slate-400">
+                <a href="#" class="hover:text-white transition-colors" data-i18n="terms">Términos y Condiciones</a>
+                <a href="#" class="hover:text-white transition-colors" data-i18n="privacy">Privacidad</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals and Templates remain outside -->
+    <template id="skeletonTemplate">
+        <div class="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 animate-pulse">
+            <div class="w-full aspect-[2/3] bg-slate-800"></div>
+            <div class="p-4 space-y-2">
+                <div class="h-4 bg-slate-800 rounded w-3/4"></div>
+                <div class="h-3 bg-slate-800 rounded w-1/2"></div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Details Modal -->
+    <div id="detailModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300 max-h-[90vh] flex flex-col relative">
+            <button id="closeDetailModal" class="absolute top-4 right-4 z-20 bg-slate-950/70 hover:bg-slate-800 text-slate-300 hover:text-white w-9 h-9 rounded-full flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="overflow-y-auto custom-scrollbar">
+                <div class="relative h-64 sm:h-80 bg-slate-950">
+                    <img id="modalCover" class="w-full h-full object-cover opacity-60" src="" alt="Banner">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
+                    <div class="absolute bottom-4 left-6 right-6 flex items-end justify-between">
+                        <div>
+                            <span id="modalGenre" class="text-xs font-semibold text-brand-red uppercase tracking-wider bg-brand-red/10 border border-brand-red/20 px-2.5 py-0.5 rounded-full"></span>
+                            <h2 id="modalTitle" class="text-2xl sm:text-3xl font-bold text-white mt-1"></h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 space-y-6">
+                    <div class="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-slate-300 border-b border-slate-800 pb-4">
+                        <span class="flex items-center gap-1 text-brand-gold font-bold"><i class="fa-solid fa-star"></i> <span id="modalRating"></span></span>
+                        <span id="modalRuntime" class="flex items-center gap-1 text-slate-400"><i class="fa-regular fa-clock"></i> <span></span></span>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-semibold text-slate-200 mb-2" data-i18n="synopsis">Sinopsis</h4>
+                        <p id="modalSummary" class="text-sm text-slate-300 leading-relaxed font-light"></p>
+                    </div>
+                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+                        <button id="modalFavBtn" class="px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium flex items-center gap-2">
+                            <i class="fa-regular fa-heart"></i> <span data-i18n="save">Guardar</span>
+                        </button>
+                        <button id="modalBookBtn" class="px-6 py-2.5 rounded-xl bg-brand-red hover:bg-brand-darkRed text-white text-sm font-semibold flex items-center gap-2">
+                            <i class="fa-solid fa-ticket"></i> <span data-i18n="bookTickets">Reservar Boletos</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket Modal -->
+    <div id="ticketModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-xl rounded-2xl overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col relative">
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-white" data-i18n="seatSelection">Selección de Asientos</h3>
+                    <p id="ticketMovieTitle" class="text-xs text-slate-400"></p>
+                </div>
+                <button id="closeTicketModal" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-6 space-y-6">
+                <div class="w-full text-center">
+                    <div class="w-3/4 h-2 bg-gradient-to-r from-transparent via-brand-red to-transparent rounded-full mx-auto shadow-[0_0_15px_rgba(229,9,20,0.8)]"></div>
+                    <span class="text-[10px] text-slate-500 uppercase tracking-widest mt-2 block" data-i18n="screen">PANTALLA</span>
+                </div>
+                <div id="seatsGrid" class="grid grid-cols-6 gap-2 max-w-xs mx-auto pt-2"></div>
+                <div class="flex items-center justify-center gap-6 text-xs text-slate-400 pt-2">
+                    <div class="flex items-center gap-1.5"><div class="w-4 h-4 rounded bg-slate-800 border border-slate-700"></div><span data-i18n="available">Disponible</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-4 h-4 rounded bg-brand-red"></div><span data-i18n="selected">Seleccionado</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-4 h-4 rounded bg-slate-700 opacity-40"></div><span data-i18n="occupied">Ocupado</span></div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs text-slate-400 block" data-i18n="totalPay">Total a pagar:</span>
+                        <span id="ticketTotal" class="text-xl font-bold text-brand-gold">$0.00</span>
+                    </div>
+                    <button id="confirmBookingBtn" disabled class="px-5 py-2.5 bg-brand-red disabled:opacity-40 hover:bg-brand-darkRed text-white text-sm font-semibold rounded-xl" data-i18n="confirmPurchase">
+                        Confirmar Compra
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-800 border border-slate-700 text-white text-sm px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toastMsg">Notificación</span>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
