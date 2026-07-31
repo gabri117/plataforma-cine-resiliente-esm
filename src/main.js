@@ -44,7 +44,17 @@ function applyTranslations() {
         }
     });
 
-    document.getElementById('langBtn').textContent = state.language === 'es' ? 'EN' : 'ES';
+    const langEs = document.getElementById('langEs');
+    const langEn = document.getElementById('langEn');
+    if (langEs && langEn) {
+        if (state.language === 'es') {
+            langEs.className = 'bg-brand-red text-white font-bold px-2 py-0.5 rounded-lg transition-all';
+            langEn.className = 'text-slate-400 hover:text-slate-200 font-medium px-2 py-0.5 rounded-lg transition-all';
+        } else {
+            langEs.className = 'text-slate-400 hover:text-slate-200 font-medium px-2 py-0.5 rounded-lg transition-all';
+            langEn.className = 'bg-brand-red text-white font-bold px-2 py-0.5 rounded-lg transition-all';
+        }
+    }
 
     if (state.movies.length > 0) {
         updateHeroBanner(state.movies[0]);
