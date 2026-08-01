@@ -3,9 +3,9 @@ import type { Review } from './entities/reviews.entity.js';
 import type { Ad } from './entities/ads.entity.js';
 import { state } from './state.js';
 import { i18n } from './i18n/i18n.js';
-import { fetchMovies, searchMoviesFromOMDb, fetchMoviesByGenreSimulado } from './services/catalogService.js';
-import { fetchReviews } from './services/reviewsService.js';
-import { fetchAds } from './services/adsService.js';
+import { fetchMovies, searchMoviesFromOMDb, fetchMoviesByGenreSimulado } from './services/catalog-service.js';
+import { fetchReviews } from './services/reviews-service.js';
+import { fetchAds } from './services/ads-service.js';
 import { crearFiltroPeliculas } from './cache/movieCache.js';
 import {
     renderGrid,
