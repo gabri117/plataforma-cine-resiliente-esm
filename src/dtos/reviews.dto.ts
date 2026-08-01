@@ -1,5 +1,5 @@
-export interface ReviewDTO {
-  user: string;
-  comment: string;
-  stars: number;
+export interface ReviewRawDTO {
+  reviewer_name: string;
+  review_comment_raw?: string | null;
+  star_count: number;
 }

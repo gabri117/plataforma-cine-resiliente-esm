@@ -1,23 +1,20 @@
-import type { ReviewDTO } from '../dtos/reviews.dto.js';
-import type { Review } from '../entities/reviews.entity.js';
-import { mapReviewDtoToEntity } from '../mappers/reviews.mapper.js';
+import type { ReviewRawDTO } from '../dtos/reviews.dto.js';
 
-export async function fetchReviews(): Promise<Review[]> {
+export async function getReviews(): Promise<ReviewRawDTO[]> {
     const delay = Math.random() * 500 + 500;
 
-    return new Promise<Review[]>((resolve, reject) => {
+    return new Promise<ReviewRawDTO[]>((resolve, reject) => {
         setTimeout(() => {
             if (Math.random() < 0.4) {
                 reject(new Error('Fallo en servicio de Reseñas'));
             } else {
-                const dtos: ReviewDTO[] = [
-                    { user: 'María G.', comment: 'Excelente película, la fotografía es impresionante.', stars: 5 },
-                    { user: 'Carlos R.', comment: 'Buena trama, aunque el final pudo ser mejor.', stars: 4 },
-                    { user: 'Ana L.', comment: 'Entretenida, perfecta para ver en familia.', stars: 4 },
-                    { user: 'Pedro M.', comment: 'No me convenció del todo, actuaciones regulares.', stars: 3 },
-                    { user: 'Lucía F.', comment: 'Una obra maestra, la volvería a ver sin duda.', stars: 5 }
-                ];
-                resolve(dtos.map(mapReviewDtoToEntity));
+                resolve([
+                    { reviewer_name: 'María G.', review_comment_raw: 'Excelente película, la fotografía es impresionante.', star_count: 5 },
+                    { reviewer_name: 'Carlos R.', review_comment_raw: 'Buena trama, aunque el final pudo ser mejor.', star_count: 4 },
+                    { reviewer_name: 'Ana L.', review_comment_raw: 'Entretenida, perfecta para ver en familia.', star_count: 4 },
+                    { reviewer_name: 'Pedro M.', review_comment_raw: 'No me convenció del todo, actuaciones regulares.', star_count: 3 },
+                    { reviewer_name: 'Lucía F.', review_comment_raw: null, star_count: 5 }
+                ]);
             }
         }, delay);
     });

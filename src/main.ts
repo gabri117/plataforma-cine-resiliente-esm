@@ -3,9 +3,12 @@ import type { Review } from './entities/reviews.entity.js';
 import type { Ad } from './entities/ads.entity.js';
 import { state } from './state.js';
 import { i18n } from './i18n/i18n.js';
-import { fetchMovies, searchMoviesFromOMDb, fetchMoviesByGenreSimulado } from './services/catalog-service.js';
-import { fetchReviews } from './services/reviews-service.js';
-import { fetchAds } from './services/ads-service.js';
+import { getMovies, getFallbackMovies, searchMovies, getMoviesByGenre } from './services/catalog-service.js';
+import { getReviews } from './services/reviews-service.js';
+import { getAds } from './services/ads-service.js';
+import { mapMovieDtoToEntity } from './mappers/movies.mapper.js';
+import { mapReviewDtoToEntity } from './mappers/reviews.mapper.js';
+import { mapAdDtoToEntity } from './mappers/ads.mapper.js';
 import { crearFiltroPeliculas } from './cache/movieCache.js';
 import {
     renderGrid,
@@ -17,7 +20,8 @@ import {
     toggleFavorite,
     filterAndRenderMovies,
     showAdsBanner,
-    updateHeroReviews
+    updateHeroReviews,
+    showSkeletons
 } from './ui/render.js';
 
 declare global {
@@ -32,7 +36,7 @@ window.openDetailModalById = openDetailModalById;
 window.openTicketModalById = openTicketModalById;
 window.toggleFavorite = toggleFavorite;
 
-const filtroCache = crearFiltroPeliculas(fetchMoviesByGenreSimulado);
+const filtroCache = crearFiltroPeliculas(getMoviesByGenre);
 
 function applyTranslations(): void {
     document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -79,11 +83,19 @@ function handleSearchInput(query: string): void {
         searchIcon.classList.add('opacity-0');
         searchSpinner.classList.remove('opacity-0');
 
-        searchDebounceTimer = setTimeout(() => {
-            searchMoviesFromOMDb(state.searchQuery).finally(() => {
-                searchIcon.classList.remove('opacity-0');
-                searchSpinner.classList.add('opacity-0');
-            });
+        searchDebounceTimer = setTimeout(async () => {
+            showSkeletons();
+            try {
+                const searchDTOs = await searchMovies(state.searchQuery);
+                state.filteredMovies = searchDTOs.map(mapMovieDtoToEntity);
+            } catch (err) {
+                state.filteredMovies = state.movies.filter(movie =>
+                    movie.title.toLowerCase().includes(state.searchQuery.toLowerCase())
+                );
+            }
+            renderGrid();
+            searchIcon.classList.remove('opacity-0');
+            searchSpinner.classList.add('opacity-0');
         }, 600);
     } else {
         searchIcon.classList.remove('opacity-0');
@@ -92,17 +104,34 @@ function handleSearchInput(query: string): void {
     }
 }
 
-function cargarPlataforma(): void {
-    Promise.allSettled([fetchMovies(), fetchReviews(), fetchAds()])
-        .then(([catalogResult, reviewsResult, adsResult]) => {
+async function cargarPlataforma(): Promise<void> {
+    showSkeletons();
+
+    try {
+        const movieDTOs = await getMovies();
+        state.movies = movieDTOs.map(mapMovieDtoToEntity);
+    } catch (err) {
+        console.warn('Usando datos de prueba:', err);
+        const fallbackDTOs = getFallbackMovies();
+        state.movies = fallbackDTOs.map(mapMovieDtoToEntity);
+        showToast('API Ocupada - Usando datos locales', 'fa-triangle-exclamation', 'text-amber-400');
+    }
+
+    if (state.movies.length > 0) updateHeroBanner(state.movies[0]);
+    filterAndRenderMovies();
+
+    Promise.allSettled([getReviews(), getAds()])
+        .then(([reviewsResult, adsResult]) => {
             if (reviewsResult.status === 'fulfilled') {
-                updateHeroReviews(reviewsResult.value.length);
+                const reviews: Review[] = reviewsResult.value.map(mapReviewDtoToEntity);
+                updateHeroReviews(reviews.length);
             } else {
                 console.warn('Reseñas no disponibles:', reviewsResult.reason.message);
             }
 
             if (adsResult.status === 'fulfilled') {
-                showAdsBanner(adsResult.value);
+                const ads: Ad[] = adsResult.value.map(mapAdDtoToEntity);
+                showAdsBanner(ads);
             } else {
                 console.warn('Anuncios no disponibles:', adsResult.reason.message);
             }

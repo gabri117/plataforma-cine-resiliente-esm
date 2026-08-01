@@ -1,6 +1,4 @@
-import { mapMovieDtoToEntity } from '../mappers/movies.mapper.js';
 import { state } from '../state.js';
-import { showSkeletons, showToast, updateHeroBanner, filterAndRenderMovies, renderGrid } from '../ui/render.js';
 const API_KEY = '121725aa';
 const BASE_URL = 'https://www.omdbapi.com/';
 const INITIAL_MOVIE_IDS = [
@@ -9,37 +7,32 @@ const INITIAL_MOVIE_IDS = [
 ];
 const MOCK_MOVIES = [
     {
-        id: 'tt3896198', title: 'Guardians of the Galaxy Vol. 2', genre: 'Action, Adventure, Comedy', rating: 7.6, runtime: '136 min',
-        posterUrl: 'https://m.media-amazon.com/images/M/MV5BNjM0NTc0NzItM2FlYS00NzEwLWE5MTUtNGE5EWEzNWU3MzE5XkEyXkFqcGdeQXVyNTgwNzIyNzg@._V1_SX300.jpg',
-        plot: '<p>The Guardians must fight to keep their newfound family together as they unravel the mystery of Peter Quill\'s true parentage.</p>', year: 2017
+        Title: 'Guardians of the Galaxy Vol. 2', Year: '2017', imdbID: 'tt3896198',
+        Poster: 'https://m.media-amazon.com/images/M/MV5BNjM0NTc0NzItM2FlYS00NzEwLWE5MTUtNGE5EWEzNWU3MzE5XkEyXkFqcGdeQXVyNTgwNzIyNzg@._V1_SX300.jpg',
+        imdbRating: '7.6', Genre: 'Action, Adventure, Comedy',
+        Plot: '<p>The Guardians must fight to keep their newfound family together as they unravel the mystery of Peter Quill\'s true parentage.</p>',
+        Runtime: '136 min', Response: 'True'
     },
     {
-        id: 'tt0816692', title: 'Interstellar', genre: 'Drama, Sci-Fi', rating: 8.7, runtime: '169 min',
-        posterUrl: 'https://m.media-amazon.com/images/M/MV5BZjdkOTU3MDktN2IxOS00OGEyLWFmMjktY2FiMmZkNWIyODZiXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_SX300.jpg',
-        plot: '<p>A team of explorers travel through a wormhole in space in an attempt to ensure humanity\'s survival.</p>', year: 2014
+        Title: 'Interstellar', Year: '2014', imdbID: 'tt0816692',
+        Poster: 'https://m.media-amazon.com/images/M/MV5BZjdkOTU3MDktN2IxOS00OGEyLWFmMjktY2FiMmZkNWIyODZiXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_SX300.jpg',
+        imdbRating: '8.7', Genre: 'Drama, Sci-Fi',
+        Plot: '<p>A team of explorers travel through a wormhole in space in an attempt to ensure humanity\'s survival.</p>',
+        Runtime: '169 min', Response: 'True'
     }
 ];
-export async function fetchMovies() {
-    showSkeletons();
-    try {
-        const moviePromises = INITIAL_MOVIE_IDS.map(id => fetch(`${BASE_URL}?apikey=${API_KEY}&i=${id}`).then(res => res.json()));
-        const results = await Promise.all(moviePromises);
-        const validResults = results.filter(item => item.Response === "True");
-        if (validResults.length === 0)
-            throw new Error("API Limit Reached");
-        state.movies = validResults.map(mapMovieDtoToEntity);
-    }
-    catch (err) {
-        console.warn('Usando datos de prueba:', err);
-        state.movies = MOCK_MOVIES;
-        showToast('API Ocupada - Usando datos locales', 'fa-triangle-exclamation', 'text-amber-400');
-    }
-    if (state.movies.length > 0)
-        updateHeroBanner(state.movies[0]);
-    filterAndRenderMovies();
-    return state.movies;
+export async function getMovies() {
+    const moviePromises = INITIAL_MOVIE_IDS.map(id => fetch(`${BASE_URL}?apikey=${API_KEY}&i=${id}`).then(res => res.json()));
+    const results = await Promise.all(moviePromises);
+    const validResults = results.filter(item => item.Response === "True");
+    if (validResults.length === 0)
+        throw new Error("API Limit Reached");
+    return validResults;
 }
-export function fetchMoviesByGenreSimulado(genero) {
+export function getFallbackMovies() {
+    return MOCK_MOVIES;
+}
+export function getMoviesByGenre(genero) {
     console.log('\ud83c\udf10 Cache MISS - consultando servicio para', genero);
     return new Promise((resolve) => {
         setTimeout(() => {
@@ -52,25 +45,13 @@ export function fetchMoviesByGenreSimulado(genero) {
         }, 600);
     });
 }
-export async function searchMoviesFromOMDb(query) {
-    showSkeletons();
-    try {
-        const response = await fetch(`${BASE_URL}?apikey=${API_KEY}&s=${encodeURIComponent(query)}&type=movie`);
-        const data = await response.json();
-        if (data.Response === "True" && data.Search) {
-            const detailPromises = data.Search.slice(0, 8).map((item) => fetch(`${BASE_URL}?apikey=${API_KEY}&i=${item.imdbID}`).then(res => res.json()));
-            const detailedResults = await Promise.all(detailPromises);
-            state.filteredMovies = detailedResults
-                .filter(item => item.Response !== "False")
-                .map(mapMovieDtoToEntity);
-        }
-        else {
-            state.filteredMovies = [];
-        }
+export async function searchMovies(query) {
+    const response = await fetch(`${BASE_URL}?apikey=${API_KEY}&s=${encodeURIComponent(query)}&type=movie`);
+    const data = await response.json();
+    if (data.Response === "True" && data.Search) {
+        const detailPromises = data.Search.slice(0, 8).map((item) => fetch(`${BASE_URL}?apikey=${API_KEY}&i=${item.imdbID}`).then(res => res.json()));
+        const detailedResults = await Promise.all(detailPromises);
+        return detailedResults.filter(item => item.Response !== "False");
     }
-    catch (err) {
-        state.filteredMovies = state.movies.filter(movie => movie.title.toLowerCase().includes(query.toLowerCase()));
-    }
-    renderGrid();
-    return state.filteredMovies;
+    return [];
 }

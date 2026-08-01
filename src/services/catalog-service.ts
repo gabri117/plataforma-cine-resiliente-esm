@@ -1,8 +1,6 @@
-import type { MovieDTO } from '../dtos/movies.dto.js';
+import type { MovieRawDTO } from '../dtos/movies.dto.js';
 import type { Movie } from '../entities/movies.entity.js';
-import { mapMovieDtoToEntity } from '../mappers/movies.mapper.js';
 import { state } from '../state.js';
-import { showSkeletons, showToast, updateHeroBanner, filterAndRenderMovies, renderGrid } from '../ui/render.js';
 
 const API_KEY = '121725aa';
 const BASE_URL = 'https://www.omdbapi.com/';
@@ -12,43 +10,40 @@ const INITIAL_MOVIE_IDS = [
     'tt10872600', 'tt1160419', 'tt0133093', 'tt0111161', 'tt2397461'
 ];
 
-const MOCK_MOVIES: Movie[] = [
+const MOCK_MOVIES: MovieRawDTO[] = [
     {
-        id: 'tt3896198', title: 'Guardians of the Galaxy Vol. 2', genre: 'Action, Adventure, Comedy', rating: 7.6, runtime: '136 min',
-        posterUrl: 'https://m.media-amazon.com/images/M/MV5BNjM0NTc0NzItM2FlYS00NzEwLWE5MTUtNGE5EWEzNWU3MzE5XkEyXkFqcGdeQXVyNTgwNzIyNzg@._V1_SX300.jpg',
-        plot: '<p>The Guardians must fight to keep their newfound family together as they unravel the mystery of Peter Quill\'s true parentage.</p>', year: 2017
+        Title: 'Guardians of the Galaxy Vol. 2', Year: '2017', imdbID: 'tt3896198',
+        Poster: 'https://m.media-amazon.com/images/M/MV5BNjM0NTc0NzItM2FlYS00NzEwLWE5MTUtNGE5EWEzNWU3MzE5XkEyXkFqcGdeQXVyNTgwNzIyNzg@._V1_SX300.jpg',
+        imdbRating: '7.6', Genre: 'Action, Adventure, Comedy',
+        Plot: '<p>The Guardians must fight to keep their newfound family together as they unravel the mystery of Peter Quill\'s true parentage.</p>',
+        Runtime: '136 min', Response: 'True'
     },
     {
-        id: 'tt0816692', title: 'Interstellar', genre: 'Drama, Sci-Fi', rating: 8.7, runtime: '169 min',
-        posterUrl: 'https://m.media-amazon.com/images/M/MV5BZjdkOTU3MDktN2IxOS00OGEyLWFmMjktY2FiMmZkNWIyODZiXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_SX300.jpg',
-        plot: '<p>A team of explorers travel through a wormhole in space in an attempt to ensure humanity\'s survival.</p>', year: 2014
+        Title: 'Interstellar', Year: '2014', imdbID: 'tt0816692',
+        Poster: 'https://m.media-amazon.com/images/M/MV5BZjdkOTU3MDktN2IxOS00OGEyLWFmMjktY2FiMmZkNWIyODZiXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_SX300.jpg',
+        imdbRating: '8.7', Genre: 'Drama, Sci-Fi',
+        Plot: '<p>A team of explorers travel through a wormhole in space in an attempt to ensure humanity\'s survival.</p>',
+        Runtime: '169 min', Response: 'True'
     }
 ];
 
-export async function fetchMovies(): Promise<Movie[]> {
-    showSkeletons();
-    try {
-        const moviePromises = INITIAL_MOVIE_IDS.map(id =>
-            fetch(`${BASE_URL}?apikey=${API_KEY}&i=${id}`).then(res => res.json() as Promise<MovieDTO>)
-        );
-        const results: MovieDTO[] = await Promise.all(moviePromises);
-        const validResults = results.filter(item => item.Response === "True");
+export async function getMovies(): Promise<MovieRawDTO[]> {
+    const moviePromises = INITIAL_MOVIE_IDS.map(id =>
+        fetch(`${BASE_URL}?apikey=${API_KEY}&i=${id}`).then(res => res.json() as Promise<MovieRawDTO>)
+    );
+    const results: MovieRawDTO[] = await Promise.all(moviePromises);
+    const validResults = results.filter(item => item.Response === "True");
 
-        if (validResults.length === 0) throw new Error("API Limit Reached");
+    if (validResults.length === 0) throw new Error("API Limit Reached");
 
-        state.movies = validResults.map(mapMovieDtoToEntity);
-    } catch (err) {
-        console.warn('Usando datos de prueba:', err);
-        state.movies = MOCK_MOVIES;
-        showToast('API Ocupada - Usando datos locales', 'fa-triangle-exclamation', 'text-amber-400');
-    }
-
-    if (state.movies.length > 0) updateHeroBanner(state.movies[0]);
-    filterAndRenderMovies();
-    return state.movies;
+    return validResults;
 }
 
-export function fetchMoviesByGenreSimulado(genero: string): Promise<Movie[]> {
+export function getFallbackMovies(): MovieRawDTO[] {
+    return MOCK_MOVIES;
+}
+
+export function getMoviesByGenre(genero: string): Promise<Movie[]> {
     console.log('\ud83c\udf10 Cache MISS - consultando servicio para', genero);
 
     return new Promise<Movie[]>((resolve) => {
@@ -66,29 +61,17 @@ export function fetchMoviesByGenreSimulado(genero: string): Promise<Movie[]> {
     });
 }
 
-export async function searchMoviesFromOMDb(query: string): Promise<Movie[]> {
-    showSkeletons();
-    try {
-        const response = await fetch(`${BASE_URL}?apikey=${API_KEY}&s=${encodeURIComponent(query)}&type=movie`);
-        const data = await response.json();
+export async function searchMovies(query: string): Promise<MovieRawDTO[]> {
+    const response = await fetch(`${BASE_URL}?apikey=${API_KEY}&s=${encodeURIComponent(query)}&type=movie`);
+    const data = await response.json();
 
-        if (data.Response === "True" && data.Search) {
-            const detailPromises = data.Search.slice(0, 8).map((item: { imdbID: string }) =>
-                fetch(`${BASE_URL}?apikey=${API_KEY}&i=${item.imdbID}`).then(res => res.json() as Promise<MovieDTO>)
-            );
-            const detailedResults: MovieDTO[] = await Promise.all(detailPromises);
-
-            state.filteredMovies = detailedResults
-                .filter(item => item.Response !== "False")
-                .map(mapMovieDtoToEntity);
-        } else {
-            state.filteredMovies = [];
-        }
-    } catch (err) {
-        state.filteredMovies = state.movies.filter(movie =>
-            movie.title.toLowerCase().includes(query.toLowerCase())
+    if (data.Response === "True" && data.Search) {
+        const detailPromises = data.Search.slice(0, 8).map((item: { imdbID: string }) =>
+            fetch(`${BASE_URL}?apikey=${API_KEY}&i=${item.imdbID}`).then(res => res.json() as Promise<MovieRawDTO>)
         );
+        const detailedResults: MovieRawDTO[] = await Promise.all(detailPromises);
+        return detailedResults.filter(item => item.Response !== "False");
     }
-    renderGrid();
-    return state.filteredMovies;
+
+    return [];
 }

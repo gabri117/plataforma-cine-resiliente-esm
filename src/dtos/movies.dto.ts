@@ -1,4 +1,4 @@
-export interface MovieDTO {
+export interface MovieRawDTO {
   Title: string;
   Year: string;
   imdbID: string;

@@ -1,14 +1,17 @@
 import { state } from './state.js';
 import { i18n } from './i18n/i18n.js';
-import { fetchMovies, searchMoviesFromOMDb, fetchMoviesByGenreSimulado } from './services/catalogService.js';
-import { fetchReviews } from './services/reviewsService.js';
-import { fetchAds } from './services/adsService.js';
+import { getMovies, getFallbackMovies, searchMovies, getMoviesByGenre } from './services/catalogService.js';
+import { getReviews } from './services/reviewsService.js';
+import { getAds } from './services/adsService.js';
+import { MovieMapper } from './mappers/movies.mapper.js';
+import { ReviewMapper } from './mappers/reviews.mapper.js';
+import { AdMapper } from './mappers/ads.mapper.js';
 import { crearFiltroPeliculas } from './cache/movieCache.js';
-import { renderGrid, updateHeroBanner, showToast, closeModal, openDetailModalById, openTicketModalById, toggleFavorite, filterAndRenderMovies, showAdsBanner, updateHeroReviews } from './ui/render.js';
+import { renderGrid, updateHeroBanner, showToast, closeModal, openDetailModalById, openTicketModalById, toggleFavorite, filterAndRenderMovies, showAdsBanner, updateHeroReviews, showSkeletons } from './ui/render.js';
 window.openDetailModalById = openDetailModalById;
 window.openTicketModalById = openTicketModalById;
 window.toggleFavorite = toggleFavorite;
-const filtroCache = crearFiltroPeliculas(fetchMoviesByGenreSimulado);
+const filtroCache = crearFiltroPeliculas(getMoviesByGenre);
 function applyTranslations() {
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
@@ -46,11 +49,18 @@ function handleSearchInput(query) {
     if (state.searchQuery.length >= 3) {
         searchIcon.classList.add('opacity-0');
         searchSpinner.classList.remove('opacity-0');
-        searchDebounceTimer = setTimeout(() => {
-            searchMoviesFromOMDb(state.searchQuery).finally(() => {
-                searchIcon.classList.remove('opacity-0');
-                searchSpinner.classList.add('opacity-0');
-            });
+        searchDebounceTimer = setTimeout(async () => {
+            showSkeletons();
+            try {
+                const rawMovies = await searchMovies(state.searchQuery);
+                state.filteredMovies = rawMovies.map(MovieMapper.toDomain);
+            }
+            catch (err) {
+                state.filteredMovies = state.movies.filter(movie => movie.title.toLowerCase().includes(state.searchQuery.toLowerCase()));
+            }
+            renderGrid();
+            searchIcon.classList.remove('opacity-0');
+            searchSpinner.classList.add('opacity-0');
         }, 600);
     }
     else {
@@ -59,17 +69,33 @@ function handleSearchInput(query) {
         filterAndRenderMovies();
     }
 }
-function cargarPlataforma() {
-    Promise.allSettled([fetchMovies(), fetchReviews(), fetchAds()])
-        .then(([catalogResult, reviewsResult, adsResult]) => {
+async function cargarPlataforma() {
+    showSkeletons();
+    try {
+        const rawMovies = await getMovies();
+        state.movies = rawMovies.map(MovieMapper.toDomain);
+    }
+    catch (err) {
+        console.warn('Usando datos de prueba:', err);
+        const fallbackDTOs = getFallbackMovies();
+        state.movies = fallbackDTOs.map(MovieMapper.toDomain);
+        showToast('API Ocupada - Usando datos locales', 'fa-triangle-exclamation', 'text-amber-400');
+    }
+    if (state.movies.length > 0)
+        updateHeroBanner(state.movies[0]);
+    filterAndRenderMovies();
+    Promise.allSettled([getReviews(), getAds()])
+        .then(([reviewsResult, adsResult]) => {
         if (reviewsResult.status === 'fulfilled') {
-            updateHeroReviews(reviewsResult.value.length);
+            const reviews = reviewsResult.value.map(ReviewMapper.toDomain);
+            updateHeroReviews(reviews.length);
         }
         else {
             console.warn('Reseñas no disponibles:', reviewsResult.reason.message);
         }
         if (adsResult.status === 'fulfilled') {
-            showAdsBanner(adsResult.value);
+            const ads = adsResult.value.map(AdMapper.toDomain);
+            showAdsBanner(ads);
         }
         else {
             console.warn('Anuncios no disponibles:', adsResult.reason.message);
