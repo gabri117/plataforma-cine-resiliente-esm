@@ -1,0 +1,265 @@
+import type { Movie } from '../entities/movies.entity.js';
+import type { Ad } from '../entities/ads.entity.js';
+import { state } from '../state.js';
+import { t, translateGenre } from '../i18n/i18n.js';
+
+const movieGrid = document.getElementById('movieGrid') as HTMLDivElement;
+const movieCountEl = document.getElementById('movieCount') as HTMLSpanElement;
+const emptyState = document.getElementById('emptyState') as HTMLDivElement;
+
+export function renderGrid(): void {
+    movieGrid.innerHTML = '';
+
+    if (state.filteredMovies.length === 0) {
+        emptyState.classList.remove('hidden');
+        movieCountEl.textContent = `0 ${t('moviesFound')}`;
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+    movieCountEl.textContent = `${state.filteredMovies.length} ${state.searchQuery ? t('moviesFound') : t('moviesShowing')}`;
+
+    state.filteredMovies.forEach(movie => {
+        const isFav = state.favorites.has(movie.id);
+        const card = document.createElement('div');
+        card.className = 'group bg-slate-900 rounded-2xl overflow-hidden border border-slate-800/80 hover:border-slate-700 hover:shadow-2xl hover:shadow-brand-red/10 transition-all duration-300 flex flex-col justify-between';
+
+        card.innerHTML = `
+            <div class="relative overflow-hidden aspect-[2/3] cursor-pointer" onclick="openDetailModalById('${movie.id}')">
+                <img src="${movie.posterUrl}" alt="${movie.title}" 
+                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                     onerror="this.src='https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=800&auto=format&fit=crop'">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80 group-hover:opacity-60 transition-opacity"></div>
+                <div class="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-xs font-bold text-brand-gold border border-slate-800 flex items-center gap-1">
+                    <i class="fa-solid fa-star"></i> ${movie.rating}
+                </div>
+                <button onclick="event.stopPropagation(); toggleFavorite('${movie.id}')" 
+                        class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-950/80 backdrop-blur-md text-slate-300 hover:text-brand-red border border-slate-800 flex items-center justify-center transition-transform active:scale-90">
+                    <i class="${isFav ? 'fa-solid text-brand-red' : 'fa-regular'} fa-heart text-sm"></i>
+                </button>
+            </div>
+            <div class="p-4 flex flex-col flex-grow justify-between gap-3">
+                <div>
+                    <span class="text-[11px] font-medium text-brand-red uppercase tracking-wide block mb-1">
+                        ${translateGenre(movie.genre.split(', ')[0] || 'Drama')}
+                    </span>
+                    <h3 class="font-bold text-white text-base leading-snug line-clamp-1 group-hover:text-brand-red transition-colors">
+                        ${movie.title}
+                    </h3>
+                </div>
+                <button onclick="openTicketModalById('${movie.id}')" 
+                        class="w-full py-2 bg-slate-800 hover:bg-brand-red text-slate-200 hover:text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-slate-700/60 hover:border-brand-red transition-all">
+                    <i class="fa-solid fa-ticket"></i> ${t('buy')}
+                </button>
+            </div>
+        `;
+        movieGrid.appendChild(card);
+    });
+}
+
+export function updateHeroBanner(movie: Movie): void {
+    const heroBg = document.getElementById('heroBg') as HTMLDivElement;
+    const heroTitle = document.getElementById('heroTitle') as HTMLHeadingElement;
+    const heroOverview = document.getElementById('heroOverview') as HTMLParagraphElement;
+    const heroMeta = document.getElementById('heroMeta') as HTMLDivElement;
+    const heroRating = document.getElementById('heroRating') as HTMLSpanElement;
+    const heroGenre = document.getElementById('heroGenre') as HTMLSpanElement;
+    const heroYear = document.getElementById('heroYear') as HTMLSpanElement;
+    const heroBookBtn = document.getElementById('heroBookBtn') as HTMLButtonElement;
+    const heroDetailBtn = document.getElementById('heroDetailBtn') as HTMLButtonElement;
+
+    heroBg.style.backgroundImage = `url('${movie.posterUrl}')`;
+    heroTitle.textContent = movie.title;
+    heroOverview.textContent = movie.plot.replace(/<\/?[^>]+(>|$)/g, "");
+
+    heroMeta.classList.remove('hidden');
+    heroRating.textContent = String(movie.rating);
+    heroGenre.textContent = translateGenre(movie.genre.split(', ')[0]);
+    heroYear.textContent = String(movie.year);
+
+    heroBookBtn.onclick = () => openTicketModal(movie);
+    heroDetailBtn.onclick = () => openDetailModal(movie);
+}
+
+export function showSkeletons(): void {
+    movieGrid.innerHTML = '';
+    const template = document.getElementById('skeletonTemplate') as HTMLTemplateElement;
+    for (let i = 0; i < 10; i++) {
+        movieGrid.appendChild(template.content.cloneNode(true));
+    }
+}
+
+export function showModal(id: string): void {
+    const modal = document.getElementById(id) as HTMLDivElement;
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    (modal.firstElementChild as HTMLElement).classList.remove('scale-95');
+    (modal.firstElementChild as HTMLElement).classList.add('scale-100');
+}
+
+export function closeModal(id: string): void {
+    const modal = document.getElementById(id) as HTMLDivElement;
+    modal.classList.add('opacity-0', 'pointer-events-none');
+    (modal.firstElementChild as HTMLElement).classList.remove('scale-100');
+    (modal.firstElementChild as HTMLElement).classList.add('scale-95');
+}
+
+export function showToast(message: string, iconClass: string = 'fa-circle-check', iconColor: string = 'text-emerald-400'): void {
+    const toast = document.getElementById('toast') as HTMLDivElement;
+    (document.getElementById('toastMsg') as HTMLSpanElement).textContent = message;
+    const toastIcon = document.getElementById('toastIcon') as HTMLElement;
+    toastIcon.className = `fa-solid ${iconClass} ${iconColor}`;
+    toast.classList.remove('translate-y-20', 'opacity-0');
+    setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+}
+
+export function openDetailModalById(id: string): void {
+    const movie = state.movies.find(m => String(m.id) === String(id))
+        || state.filteredMovies.find(m => String(m.id) === String(id));
+    if (movie) openDetailModal(movie);
+}
+
+export function openTicketModalById(id: string): void {
+    const movie = state.movies.find(m => String(m.id) === String(id))
+        || state.filteredMovies.find(m => String(m.id) === String(id));
+    if (movie) openTicketModal(movie);
+}
+
+export function openDetailModal(movie: Movie): void {
+    (document.getElementById('modalCover') as HTMLImageElement).src = movie.posterUrl;
+    (document.getElementById('modalTitle') as HTMLHeadingElement).textContent = movie.title;
+    (document.getElementById('modalGenre') as HTMLSpanElement).textContent = movie.genre.split(', ').map(translateGenre).join(' \u2022 ');
+    (document.getElementById('modalRating') as HTMLSpanElement).textContent = String(movie.rating);
+    const runtimeSpan = (document.getElementById('modalRuntime') as HTMLDivElement).querySelector('span') as HTMLSpanElement;
+    runtimeSpan.textContent = `${movie.runtime}`;
+    (document.getElementById('modalSummary') as HTMLParagraphElement).innerHTML = movie.plot;
+
+    const favBtn = document.getElementById('modalFavBtn') as HTMLButtonElement;
+    const isFav = state.favorites.has(movie.id);
+    const favIcon = favBtn.querySelector('i') as HTMLElement;
+    favIcon.className = `${isFav ? 'fa-solid text-brand-red' : 'fa-regular'} fa-heart`;
+    favBtn.onclick = () => {
+        toggleFavorite(movie.id);
+        favIcon.className = `${state.favorites.has(movie.id) ? 'fa-solid text-brand-red' : 'fa-regular'} fa-heart`;
+    };
+
+    const modalBookBtn = document.getElementById('modalBookBtn') as HTMLButtonElement;
+    modalBookBtn.onclick = () => {
+        closeModal('detailModal');
+        openTicketModal(movie);
+    };
+
+    showModal('detailModal');
+}
+
+export function openTicketModal(movie: Movie): void {
+    state.selectedSeats.clear();
+    (document.getElementById('ticketMovieTitle') as HTMLParagraphElement).textContent = movie.title;
+    updateTicketTotal();
+
+    const seatsGrid = document.getElementById('seatsGrid') as HTMLDivElement;
+    seatsGrid.innerHTML = '';
+
+    for (let i = 1; i <= 24; i++) {
+        const seat = document.createElement('button');
+        const isOccupied = i % 5 === 0;
+
+        seat.className = `w-9 h-9 rounded-lg text-xs font-bold transition-all flex items-center justify-center ${
+            isOccupied
+            ? 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-40'
+            : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700/80'
+        }`;
+        seat.textContent = String(i);
+
+        if (!isOccupied) seat.onclick = () => toggleSeat(i, seat);
+        seatsGrid.appendChild(seat);
+    }
+    showModal('ticketModal');
+}
+
+export function toggleSeat(seatNum: number, seatEl: HTMLButtonElement): void {
+    if (state.selectedSeats.has(seatNum)) {
+        state.selectedSeats.delete(seatNum);
+        seatEl.classList.remove('bg-brand-red', 'text-white', 'border-brand-red');
+        seatEl.classList.add('bg-slate-800', 'text-slate-300');
+    } else {
+        state.selectedSeats.add(seatNum);
+        seatEl.classList.remove('bg-slate-800', 'text-slate-300');
+        seatEl.classList.add('bg-brand-red', 'text-white', 'border-brand-red');
+    }
+    updateTicketTotal();
+}
+
+export function updateTicketTotal(): void {
+    const total = state.selectedSeats.size * state.ticketPrice;
+    (document.getElementById('ticketTotal') as HTMLSpanElement).textContent = `$${total.toFixed(2)}`;
+    (document.getElementById('confirmBookingBtn') as HTMLButtonElement).disabled = state.selectedSeats.size === 0;
+}
+
+export function toggleFavorite(id: string): void {
+    if (state.favorites.has(id)) {
+        state.favorites.delete(id);
+        showToast(state.language === 'es' ? 'Eliminada de favoritos' : 'Removed from favorites', 'fa-heart-crack', 'text-slate-400');
+    } else {
+        state.favorites.add(id);
+        showToast(state.language === 'es' ? 'A\u00f1adida a favoritos' : 'Added to favorites', 'fa-heart', 'text-brand-red');
+    }
+    (document.getElementById('favCount') as HTMLSpanElement).textContent = String(state.favorites.size);
+    renderGrid();
+}
+
+export function updateHeroReviews(count: number): void {
+    const heroMeta = document.getElementById('heroMeta') as HTMLDivElement;
+    const existingBadge = document.getElementById('heroReviewBadge');
+
+    if (!count) {
+        if (existingBadge) existingBadge.remove();
+        return;
+    }
+
+    if (!existingBadge) {
+        const badge = document.createElement('span');
+        badge.id = 'heroReviewBadge';
+        badge.className = 'flex items-center gap-1 bg-brand-red/20 border border-brand-red/30 px-2.5 py-1 rounded-md text-xs';
+        badge.innerHTML = '<i class="fa-solid fa-comments text-brand-red"></i> <span id="heroReviewCount"></span>';
+        heroMeta.insertBefore(badge, heroMeta.firstChild);
+    }
+    const heroReviewCount = document.getElementById('heroReviewCount') as HTMLSpanElement;
+    heroReviewCount.textContent = String(count);
+}
+
+export function showAdsBanner(ads: Ad[]): void {
+    const existingBanner = document.getElementById('adsBanner');
+    if (existingBanner) existingBanner.remove();
+
+    if (!ads || ads.length === 0) return;
+
+    const pills = ads.map(ad =>
+        `<span class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap border border-slate-700">
+            <span class="text-slate-300">${ad.promo}</span>
+            <span class="text-brand-gold font-bold">${ad.discount}</span>
+        </span>`
+    ).join('');
+
+    const bannerHTML = `
+        <div id="adsBanner" class="flex items-center gap-4 overflow-x-auto py-3 px-4 bg-gradient-to-r from-brand-red/10 to-amber-500/10 border border-brand-red/20 rounded-xl mb-4 animate-fade-in">
+            <span class="text-brand-red text-sm font-bold whitespace-nowrap flex items-center gap-1.5">
+                <i class="fa-solid fa-tag"></i> Ofertas
+            </span>
+            ${pills}
+        </div>
+    `;
+
+    movieGrid.insertAdjacentHTML('beforebegin', bannerHTML);
+}
+
+export function filterAndRenderMovies(): void {
+    state.filteredMovies = state.movies.filter(movie => {
+        if (state.searchQuery.length >= 3) {
+            return movie.title.toLowerCase().includes(state.searchQuery.toLowerCase());
+        }
+
+        if (state.activeFilter === 'all') return true;
+        return movie.genre.split(', ').some((g: string) => g.toLowerCase().includes(state.activeFilter.toLowerCase()));
+    });
+    renderGrid();
+}

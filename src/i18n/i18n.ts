@@ -48,11 +48,11 @@ export const genreTranslations = {
 };
 
 // Helper de traducción
-export function t(key) {
-    return i18n[state.language][key] || key;
+export function t(key: string): string {
+    return (i18n as Record<string, Record<string, string>>)[state.language]?.[key] || key;
 }
 
-export function translateGenre(genre) {
+export function translateGenre(genre: string): string {
     if (state.language === 'en') return genre;
-    return genreTranslations[genre] || genre;
+    return (genreTranslations as Record<string, string>)[genre] || genre;
 }
