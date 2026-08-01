@@ -1,29 +1,21 @@
-import type { Movie } from '../entities/movies.entity.js';
-import type { Ad } from '../entities/ads.entity.js';
 import { state } from '../state.js';
 import { t, translateGenre } from '../i18n/i18n.js';
-
-const movieGrid = document.getElementById('movieGrid') as HTMLDivElement;
-const movieCountEl = document.getElementById('movieCount') as HTMLSpanElement;
-const emptyState = document.getElementById('emptyState') as HTMLDivElement;
-
-export function renderGrid(): void {
+const movieGrid = document.getElementById('movieGrid');
+const movieCountEl = document.getElementById('movieCount');
+const emptyState = document.getElementById('emptyState');
+export function renderGrid() {
     movieGrid.innerHTML = '';
-
     if (state.filteredMovies.length === 0) {
         emptyState.classList.remove('hidden');
         movieCountEl.textContent = `0 ${t('moviesFound')}`;
         return;
     }
-
     emptyState.classList.add('hidden');
     movieCountEl.textContent = `${state.filteredMovies.length} ${state.searchQuery ? t('moviesFound') : t('moviesShowing')}`;
-
     state.filteredMovies.forEach(movie => {
         const isFav = state.favorites.has(movie.id);
         const card = document.createElement('div');
         card.className = 'group bg-slate-900 rounded-2xl overflow-hidden border border-slate-800/80 hover:border-slate-700 hover:shadow-2xl hover:shadow-brand-red/10 transition-all duration-300 flex flex-col justify-between';
-
         card.innerHTML = `
             <div class="relative overflow-hidden aspect-[2/3] cursor-pointer" onclick="openDetailModalById('${movie.id}')">
                 <img src="${movie.posterUrl}" alt="${movie.title}" 
@@ -56,166 +48,145 @@ export function renderGrid(): void {
         movieGrid.appendChild(card);
     });
 }
-
-export function updateHeroBanner(movie: Movie): void {
-    const heroBg = document.getElementById('heroBg') as HTMLDivElement;
-    const heroTitle = document.getElementById('heroTitle') as HTMLHeadingElement;
-    const heroOverview = document.getElementById('heroOverview') as HTMLParagraphElement;
-    const heroMeta = document.getElementById('heroMeta') as HTMLDivElement;
-    const heroRating = document.getElementById('heroRating') as HTMLSpanElement;
-    const heroGenre = document.getElementById('heroGenre') as HTMLSpanElement;
-    const heroYear = document.getElementById('heroYear') as HTMLSpanElement;
-    const heroBookBtn = document.getElementById('heroBookBtn') as HTMLButtonElement;
-    const heroDetailBtn = document.getElementById('heroDetailBtn') as HTMLButtonElement;
-
+export function updateHeroBanner(movie) {
+    const heroBg = document.getElementById('heroBg');
+    const heroTitle = document.getElementById('heroTitle');
+    const heroOverview = document.getElementById('heroOverview');
+    const heroMeta = document.getElementById('heroMeta');
+    const heroRating = document.getElementById('heroRating');
+    const heroGenre = document.getElementById('heroGenre');
+    const heroYear = document.getElementById('heroYear');
+    const heroBookBtn = document.getElementById('heroBookBtn');
+    const heroDetailBtn = document.getElementById('heroDetailBtn');
     heroBg.style.backgroundImage = `url('${movie.posterUrl}')`;
     heroTitle.textContent = movie.title;
     heroOverview.textContent = movie.plot.replace(/<\/?[^>]+(>|$)/g, "");
-
     heroMeta.classList.remove('hidden');
     heroRating.textContent = String(movie.rating);
     heroGenre.textContent = translateGenre(movie.genre.split(', ')[0]);
     heroYear.textContent = String(movie.year);
-
     heroBookBtn.onclick = () => openTicketModal(movie);
     heroDetailBtn.onclick = () => openDetailModal(movie);
 }
-
-export function showSkeletons(): void {
+export function showSkeletons() {
     movieGrid.innerHTML = '';
-    const template = document.getElementById('skeletonTemplate') as HTMLTemplateElement;
+    const template = document.getElementById('skeletonTemplate');
     for (let i = 0; i < 10; i++) {
         movieGrid.appendChild(template.content.cloneNode(true));
     }
 }
-
-export function showModal(id: string): void {
-    const modal = document.getElementById(id) as HTMLDivElement;
+export function showModal(id) {
+    const modal = document.getElementById(id);
     modal.classList.remove('opacity-0', 'pointer-events-none');
-    (modal.firstElementChild as HTMLElement).classList.remove('scale-95');
-    (modal.firstElementChild as HTMLElement).classList.add('scale-100');
+    modal.firstElementChild.classList.remove('scale-95');
+    modal.firstElementChild.classList.add('scale-100');
 }
-
-export function closeModal(id: string): void {
-    const modal = document.getElementById(id) as HTMLDivElement;
+export function closeModal(id) {
+    const modal = document.getElementById(id);
     modal.classList.add('opacity-0', 'pointer-events-none');
-    (modal.firstElementChild as HTMLElement).classList.remove('scale-100');
-    (modal.firstElementChild as HTMLElement).classList.add('scale-95');
+    modal.firstElementChild.classList.remove('scale-100');
+    modal.firstElementChild.classList.add('scale-95');
 }
-
-export function showToast(message: string, iconClass: string = 'fa-circle-check', iconColor: string = 'text-emerald-400'): void {
-    const toast = document.getElementById('toast') as HTMLDivElement;
-    (document.getElementById('toastMsg') as HTMLSpanElement).textContent = message;
-    const toastIcon = document.getElementById('toastIcon') as HTMLElement;
+export function showToast(message, iconClass = 'fa-circle-check', iconColor = 'text-emerald-400') {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = message;
+    const toastIcon = document.getElementById('toastIcon');
     toastIcon.className = `fa-solid ${iconClass} ${iconColor}`;
     toast.classList.remove('translate-y-20', 'opacity-0');
     setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
 }
-
-export function openDetailModalById(id: string): void {
+export function openDetailModalById(id) {
     const movie = state.movies.find(m => String(m.id) === String(id))
         || state.filteredMovies.find(m => String(m.id) === String(id));
-    if (movie) openDetailModal(movie);
+    if (movie)
+        openDetailModal(movie);
 }
-
-export function openTicketModalById(id: string): void {
+export function openTicketModalById(id) {
     const movie = state.movies.find(m => String(m.id) === String(id))
         || state.filteredMovies.find(m => String(m.id) === String(id));
-    if (movie) openTicketModal(movie);
+    if (movie)
+        openTicketModal(movie);
 }
-
-export function openDetailModal(movie: Movie): void {
-    (document.getElementById('modalCover') as HTMLImageElement).src = movie.posterUrl;
-    (document.getElementById('modalTitle') as HTMLHeadingElement).textContent = movie.title;
-    (document.getElementById('modalGenre') as HTMLSpanElement).textContent = movie.genre.split(', ').map(translateGenre).join(' \u2022 ');
-    (document.getElementById('modalRating') as HTMLSpanElement).textContent = String(movie.rating);
-    const runtimeSpan = (document.getElementById('modalRuntime') as HTMLDivElement).querySelector('span') as HTMLSpanElement;
+export function openDetailModal(movie) {
+    document.getElementById('modalCover').src = movie.posterUrl;
+    document.getElementById('modalTitle').textContent = movie.title;
+    document.getElementById('modalGenre').textContent = movie.genre.split(', ').map(translateGenre).join(' \u2022 ');
+    document.getElementById('modalRating').textContent = String(movie.rating);
+    const runtimeSpan = document.getElementById('modalRuntime').querySelector('span');
     runtimeSpan.textContent = `${movie.runtime}`;
-    (document.getElementById('modalSummary') as HTMLParagraphElement).innerHTML = movie.plot;
-
-    const favBtn = document.getElementById('modalFavBtn') as HTMLButtonElement;
+    document.getElementById('modalSummary').innerHTML = movie.plot;
+    const favBtn = document.getElementById('modalFavBtn');
     const isFav = state.favorites.has(movie.id);
-    const favIcon = favBtn.querySelector('i') as HTMLElement;
+    const favIcon = favBtn.querySelector('i');
     favIcon.className = `${isFav ? 'fa-solid text-brand-red' : 'fa-regular'} fa-heart`;
     favBtn.onclick = () => {
         toggleFavorite(movie.id);
         favIcon.className = `${state.favorites.has(movie.id) ? 'fa-solid text-brand-red' : 'fa-regular'} fa-heart`;
     };
-
-    const modalBookBtn = document.getElementById('modalBookBtn') as HTMLButtonElement;
+    const modalBookBtn = document.getElementById('modalBookBtn');
     modalBookBtn.onclick = () => {
         closeModal('detailModal');
         openTicketModal(movie);
     };
-
     showModal('detailModal');
 }
-
-export function openTicketModal(movie: Movie): void {
+export function openTicketModal(movie) {
     state.selectedSeats.clear();
-    (document.getElementById('ticketMovieTitle') as HTMLParagraphElement).textContent = movie.title;
+    document.getElementById('ticketMovieTitle').textContent = movie.title;
     updateTicketTotal();
-
-    const seatsGrid = document.getElementById('seatsGrid') as HTMLDivElement;
+    const seatsGrid = document.getElementById('seatsGrid');
     seatsGrid.innerHTML = '';
-
     for (let i = 1; i <= 24; i++) {
         const seat = document.createElement('button');
         const isOccupied = i % 5 === 0;
-
-        seat.className = `w-9 h-9 rounded-lg text-xs font-bold transition-all flex items-center justify-center ${
-            isOccupied
+        seat.className = `w-9 h-9 rounded-lg text-xs font-bold transition-all flex items-center justify-center ${isOccupied
             ? 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-40'
-            : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700/80'
-        }`;
+            : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700/80'}`;
         seat.textContent = String(i);
-
-        if (!isOccupied) seat.onclick = () => toggleSeat(i, seat);
+        if (!isOccupied)
+            seat.onclick = () => toggleSeat(i, seat);
         seatsGrid.appendChild(seat);
     }
     showModal('ticketModal');
 }
-
-export function toggleSeat(seatNum: number, seatEl: HTMLButtonElement): void {
+export function toggleSeat(seatNum, seatEl) {
     if (state.selectedSeats.has(seatNum)) {
         state.selectedSeats.delete(seatNum);
         seatEl.classList.remove('bg-brand-red', 'text-white', 'border-brand-red');
         seatEl.classList.add('bg-slate-800', 'text-slate-300');
-    } else {
+    }
+    else {
         state.selectedSeats.add(seatNum);
         seatEl.classList.remove('bg-slate-800', 'text-slate-300');
         seatEl.classList.add('bg-brand-red', 'text-white', 'border-brand-red');
     }
     updateTicketTotal();
 }
-
-export function updateTicketTotal(): void {
+export function updateTicketTotal() {
     const total = state.selectedSeats.size * state.ticketPrice;
-    (document.getElementById('ticketTotal') as HTMLSpanElement).textContent = `$${total.toFixed(2)}`;
-    (document.getElementById('confirmBookingBtn') as HTMLButtonElement).disabled = state.selectedSeats.size === 0;
+    document.getElementById('ticketTotal').textContent = `$${total.toFixed(2)}`;
+    document.getElementById('confirmBookingBtn').disabled = state.selectedSeats.size === 0;
 }
-
-export function toggleFavorite(id: string): void {
+export function toggleFavorite(id) {
     if (state.favorites.has(id)) {
         state.favorites.delete(id);
         showToast(state.language === 'es' ? 'Eliminada de favoritos' : 'Removed from favorites', 'fa-heart-crack', 'text-slate-400');
-    } else {
+    }
+    else {
         state.favorites.add(id);
         showToast(state.language === 'es' ? 'A\u00f1adida a favoritos' : 'Added to favorites', 'fa-heart', 'text-brand-red');
     }
-    (document.getElementById('favCount') as HTMLSpanElement).textContent = String(state.favorites.size);
+    document.getElementById('favCount').textContent = String(state.favorites.size);
     renderGrid();
 }
-
-export function updateHeroReviews(count: number): void {
-    const heroMeta = document.getElementById('heroMeta') as HTMLDivElement;
+export function updateHeroReviews(count) {
+    const heroMeta = document.getElementById('heroMeta');
     const existingBadge = document.getElementById('heroReviewBadge');
-
     if (!count) {
-        if (existingBadge) existingBadge.remove();
+        if (existingBadge)
+            existingBadge.remove();
         return;
     }
-
     if (!existingBadge) {
         const badge = document.createElement('span');
         badge.id = 'heroReviewBadge';
@@ -223,23 +194,19 @@ export function updateHeroReviews(count: number): void {
         badge.innerHTML = '<i class="fa-solid fa-comments text-brand-red"></i> <span id="heroReviewCount"></span>';
         heroMeta.insertBefore(badge, heroMeta.firstChild);
     }
-    const heroReviewCount = document.getElementById('heroReviewCount') as HTMLSpanElement;
+    const heroReviewCount = document.getElementById('heroReviewCount');
     heroReviewCount.textContent = String(count);
 }
-
-export function showAdsBanner(ads: Ad[]): void {
+export function showAdsBanner(ads) {
     const existingBanner = document.getElementById('adsBanner');
-    if (existingBanner) existingBanner.remove();
-
-    if (!ads || ads.length === 0) return;
-
-    const pills = ads.map(ad =>
-        `<span class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap border border-slate-700">
+    if (existingBanner)
+        existingBanner.remove();
+    if (!ads || ads.length === 0)
+        return;
+    const pills = ads.map(ad => `<span class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap border border-slate-700">
             <span class="text-slate-300">${ad.promo}</span>
             <span class="text-brand-gold font-bold">${ad.discount}</span>
-        </span>`
-    ).join('');
-
+        </span>`).join('');
     const bannerHTML = `
         <div id="adsBanner" class="flex items-center gap-4 overflow-x-auto py-3 px-4 bg-gradient-to-r from-brand-red/10 to-amber-500/10 border border-brand-red/20 rounded-xl mb-4 animate-fade-in">
             <span class="text-brand-red text-sm font-bold whitespace-nowrap flex items-center gap-1.5">
@@ -248,18 +215,16 @@ export function showAdsBanner(ads: Ad[]): void {
             ${pills}
         </div>
     `;
-
     movieGrid.insertAdjacentHTML('beforebegin', bannerHTML);
 }
-
-export function filterAndRenderMovies(): void {
+export function filterAndRenderMovies() {
     state.filteredMovies = state.movies.filter(movie => {
         if (state.searchQuery.length >= 3) {
             return movie.title.toLowerCase().includes(state.searchQuery.toLowerCase());
         }
-
-        if (state.activeFilter === 'all') return true;
-        return movie.genre.split(', ').some((g: string) => g.toLowerCase().includes(state.activeFilter.toLowerCase()));
+        if (state.activeFilter === 'all')
+            return true;
+        return movie.genre.split(', ').some((g) => g.toLowerCase().includes(state.activeFilter.toLowerCase()));
     });
     renderGrid();
 }

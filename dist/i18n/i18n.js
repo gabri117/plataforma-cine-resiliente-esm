@@ -1,5 +1,4 @@
 import { state } from '../state.js';
-
 // DICCIONARIO DE TRADUCCIONES (i18n)
 export const i18n = {
     es: {
@@ -39,20 +38,18 @@ export const i18n = {
         moviesFound: "movies found", moviesShowing: "movies showing"
     }
 };
-
 // Mapeo para traducir géneros de la API (que vienen en inglés)
 export const genreTranslations = {
     'Action': 'Acción', 'Adventure': 'Aventura', 'Comedy': 'Comedia',
     'Sci-Fi': 'Ciencia Ficción', 'Drama': 'Drama', 'Thriller': 'Suspenso',
     'Horror': 'Terror', 'Animation': 'Animación', 'Family': 'Familiar'
 };
-
 // Helper de traducción
-export function t(key: string): string {
-    return (i18n as Record<string, Record<string, string>>)[state.language]?.[key] || key;
+export function t(key) {
+    return i18n[state.language]?.[key] || key;
 }
-
-export function translateGenre(genre: string): string {
-    if (state.language === 'en') return genre;
-    return (genreTranslations as Record<string, string>)[genre] || genre;
+export function translateGenre(genre) {
+    if (state.language === 'en')
+        return genre;
+    return genreTranslations[genre] || genre;
 }
