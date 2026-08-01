@@ -1,15 +1,16 @@
+import type { MovieRawDTO } from './dtos/movies.dto.js';
 import type { Movie } from './entities/movies.entity.js';
 import type { Review } from './entities/reviews.entity.js';
 import type { Ad } from './entities/ads.entity.js';
 import { state } from './state.js';
 import { i18n } from './i18n/i18n.js';
-import { getMovies, getFallbackMovies, searchMovies, getMoviesByGenre } from './services/catalog-service.js';
-import { getReviews } from './services/reviews-service.js';
-import { getAds } from './services/ads-service.js';
-import { mapMovieDtoToEntity } from './mappers/movies.mapper.js';
-import { mapReviewDtoToEntity } from './mappers/reviews.mapper.js';
-import { mapAdDtoToEntity } from './mappers/ads.mapper.js';
-import { crearFiltroPeliculas } from './cache/movieCache.js';
+import { getMovies, searchMovies, getMoviesByGenre } from './services/catalog.service.js';
+import { getReviews } from './services/reviews.service.js';
+import { getAds } from './services/ads.service.js';
+import { MovieMapper } from './mappers/movies.mapper.js';
+import { ReviewMapper } from './mappers/reviews.mapper.js';
+import { AdMapper } from './mappers/ads.mapper.js';
+import { crearFiltroPeliculas } from './cache/movie.cache.js';
 import {
     renderGrid,
     updateHeroBanner,
@@ -87,7 +88,7 @@ function handleSearchInput(query: string): void {
             showSkeletons();
             try {
                 const searchDTOs = await searchMovies(state.searchQuery);
-                state.filteredMovies = searchDTOs.map(mapMovieDtoToEntity);
+                state.filteredMovies = searchDTOs.map(MovieMapper.toDomain);
             } catch (err) {
                 state.filteredMovies = state.movies.filter(movie =>
                     movie.title.toLowerCase().includes(state.searchQuery.toLowerCase())
@@ -109,12 +110,10 @@ async function cargarPlataforma(): Promise<void> {
 
     try {
         const movieDTOs = await getMovies();
-        state.movies = movieDTOs.map(mapMovieDtoToEntity);
+        state.movies = movieDTOs.map(MovieMapper.toDomain);
     } catch (err) {
-        console.warn('Usando datos de prueba:', err);
-        const fallbackDTOs = getFallbackMovies();
-        state.movies = fallbackDTOs.map(mapMovieDtoToEntity);
-        showToast('API Ocupada - Usando datos locales', 'fa-triangle-exclamation', 'text-amber-400');
+        console.warn('API de OMDb no disponible:', err);
+        showToast('API Ocupada - Intenta de nuevo más tarde', 'fa-triangle-exclamation', 'text-amber-400');
     }
 
     if (state.movies.length > 0) updateHeroBanner(state.movies[0]);
@@ -123,14 +122,14 @@ async function cargarPlataforma(): Promise<void> {
     Promise.allSettled([getReviews(), getAds()])
         .then(([reviewsResult, adsResult]) => {
             if (reviewsResult.status === 'fulfilled') {
-                const reviews: Review[] = reviewsResult.value.map(mapReviewDtoToEntity);
+                const reviews: Review[] = reviewsResult.value.map(ReviewMapper.toDomain);
                 updateHeroReviews(reviews.length);
             } else {
                 console.warn('Reseñas no disponibles:', reviewsResult.reason.message);
             }
 
             if (adsResult.status === 'fulfilled') {
-                const ads: Ad[] = adsResult.value.map(mapAdDtoToEntity);
+                const ads: Ad[] = adsResult.value.map(AdMapper.toDomain);
                 showAdsBanner(ads);
             } else {
                 console.warn('Anuncios no disponibles:', adsResult.reason.message);
@@ -160,7 +159,7 @@ function setupEventListeners(): void {
             const genero = target.dataset.filter;
             if (genero) {
                 state.activeFilter = genero;
-                filtroCache.filtrarPorGenero(genero).then(movies => {
+                filtroCache.filtrarPorGenero(genero).then((movies: Movie[]) => {
                     state.filteredMovies = movies;
                     renderGrid();
                 });

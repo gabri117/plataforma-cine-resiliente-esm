@@ -1,12 +1,12 @@
 import { state } from './state.js';
 import { i18n } from './i18n/i18n.js';
-import { getMovies, getFallbackMovies, searchMovies, getMoviesByGenre } from './services/catalogService.js';
-import { getReviews } from './services/reviewsService.js';
-import { getAds } from './services/adsService.js';
+import { getMovies, searchMovies, getMoviesByGenre } from './services/catalog.service.js';
+import { getReviews } from './services/reviews.service.js';
+import { getAds } from './services/ads.service.js';
 import { MovieMapper } from './mappers/movies.mapper.js';
 import { ReviewMapper } from './mappers/reviews.mapper.js';
 import { AdMapper } from './mappers/ads.mapper.js';
-import { crearFiltroPeliculas } from './cache/movieCache.js';
+import { crearFiltroPeliculas } from './cache/movie.cache.js';
 import { renderGrid, updateHeroBanner, showToast, closeModal, openDetailModalById, openTicketModalById, toggleFavorite, filterAndRenderMovies, showAdsBanner, updateHeroReviews, showSkeletons } from './ui/render.js';
 window.openDetailModalById = openDetailModalById;
 window.openTicketModalById = openTicketModalById;
@@ -52,8 +52,8 @@ function handleSearchInput(query) {
         searchDebounceTimer = setTimeout(async () => {
             showSkeletons();
             try {
-                const rawMovies = await searchMovies(state.searchQuery);
-                state.filteredMovies = rawMovies.map(MovieMapper.toDomain);
+                const searchDTOs = await searchMovies(state.searchQuery);
+                state.filteredMovies = searchDTOs.map(MovieMapper.toDomain);
             }
             catch (err) {
                 state.filteredMovies = state.movies.filter(movie => movie.title.toLowerCase().includes(state.searchQuery.toLowerCase()));
@@ -72,14 +72,12 @@ function handleSearchInput(query) {
 async function cargarPlataforma() {
     showSkeletons();
     try {
-        const rawMovies = await getMovies();
-        state.movies = rawMovies.map(MovieMapper.toDomain);
+        const movieDTOs = await getMovies();
+        state.movies = movieDTOs.map(MovieMapper.toDomain);
     }
     catch (err) {
-        console.warn('Usando datos de prueba:', err);
-        const fallbackDTOs = getFallbackMovies();
-        state.movies = fallbackDTOs.map(MovieMapper.toDomain);
-        showToast('API Ocupada - Usando datos locales', 'fa-triangle-exclamation', 'text-amber-400');
+        console.warn('API de OMDb no disponible:', err);
+        showToast('API Ocupada - Intenta de nuevo más tarde', 'fa-triangle-exclamation', 'text-amber-400');
     }
     if (state.movies.length > 0)
         updateHeroBanner(state.movies[0]);
@@ -121,7 +119,7 @@ function setupEventListeners() {
             const genero = target.dataset.filter;
             if (genero) {
                 state.activeFilter = genero;
-                filtroCache.filtrarPorGenero(genero).then(movies => {
+                filtroCache.filtrarPorGenero(genero).then((movies) => {
                     state.filteredMovies = movies;
                     renderGrid();
                 });
