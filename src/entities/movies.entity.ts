@@ -7,4 +7,5 @@ export interface Movie {
   plot: string;
   runtime: string;
   posterUrl: string;
+  isTopRated: boolean;
 }

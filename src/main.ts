@@ -1,5 +1,9 @@
 import type { MovieRawDTO } from './dtos/movies.dto.js';
+import type { ReviewRawDTO } from './dtos/reviews.dto.js';
+import type { AdRawDTO } from './dtos/ads.dto.js';
 import type { Movie } from './entities/movies.entity.js';
+import type { Series } from './entities/series.entity.js';
+import type { Documentary } from './entities/documentary.entity.js';
 import type { Review } from './entities/reviews.entity.js';
 import type { Ad } from './entities/ads.entity.js';
 import { state } from './state.js';
@@ -8,9 +12,13 @@ import { getMovies, searchMovies, getMoviesByGenre } from './services/catalog.se
 import { getReviews } from './services/reviews.service.js';
 import { getAds } from './services/ads.service.js';
 import { MovieMapper } from './mappers/movies.mapper.js';
+import type { MovieSafeUpdate, MovieSummary } from './mappers/movies.mapper.js';
 import { ReviewMapper } from './mappers/reviews.mapper.js';
+import type { ReviewSafeUpdate } from './mappers/reviews.mapper.js';
 import { AdMapper } from './mappers/ads.mapper.js';
+import type { AdSafeUpdate } from './mappers/ads.mapper.js';
 import { crearFiltroPeliculas } from './cache/movie.cache.js';
+import { DataCatalogManager } from './repository/data-catalog-manager.js';
 import {
     renderGrid,
     updateHeroBanner,
@@ -38,6 +46,70 @@ window.openTicketModalById = openTicketModalById;
 window.toggleFavorite = toggleFavorite;
 
 const filtroCache = crearFiltroPeliculas(getMoviesByGenre);
+
+const movieCatalog = new DataCatalogManager<Movie>();
+const seriesCatalog = new DataCatalogManager<Series>();
+const docCatalog = new DataCatalogManager<Documentary>();
+
+const sampleSeries: Series[] = [
+    { id: 's1', title: 'Breaking Bad', seasons: 5, isOngoing: false },
+    { id: 's2', title: 'The Last of Us', seasons: 2, isOngoing: true },
+    { id: 's3', title: 'Dark', seasons: 3, isOngoing: false },
+    { id: 's4', title: 'Severance', seasons: 2, isOngoing: true },
+];
+
+const sampleDocumentaries: Documentary[] = [
+    { id: 'd1', title: 'Planet Earth', director: 'Alastair Fothergill', durationMinutes: 550 },
+    { id: 'd2', title: 'The Social Dilemma', director: 'Jeff Orlowski', durationMinutes: 94 },
+    { id: 'd3', title: 'Free Solo', director: 'Elizabeth Chai Vasarhelyi', durationMinutes: 100 },
+    { id: 'd4', title: 'Our Planet', director: 'Adam Chapman', durationMinutes: 400 },
+];
+
+seriesCatalog.addMany(sampleSeries);
+docCatalog.addMany(sampleDocumentaries);
+
+function demonstrateCatalogPolymorphism(): void {
+    const topRated: Movie[] = movieCatalog.filter((m: Movie) => m.isTopRated);
+    console.log('[DataCatalogManager] Top-rated movies:', topRated.map((m: Movie) => m.title));
+
+    const seriesById: Series | undefined = seriesCatalog.getById('s2');
+    console.log('[DataCatalogManager] Series by id s2:', seriesById);
+
+    const updatedDoc: Documentary | undefined = docCatalog.update('d2', {
+        durationMinutes: 98,
+        title: 'The Social Dilemma (Extended)',
+    });
+    console.log('[DataCatalogManager] Updated documentary:', updatedDoc);
+    console.log('[DataCatalogManager] Counts — movies:', movieCatalog.count(), 'series:', seriesCatalog.count(), 'docs:', docCatalog.count());
+
+    const corruptMoviePayload: Partial<MovieRawDTO> = {
+        Genre: 'Drama',
+        imdbRating: '9.1',
+    };
+    const safeMovieUpdate: MovieSafeUpdate = MovieMapper.sanitizePartial(corruptMoviePayload);
+    console.log('[sanitizePartial] MovieSafeUpdate from corrupt payload:', safeMovieUpdate);
+
+    const firstMovie: Movie | undefined = movieCatalog.getAll()[0];
+    if (firstMovie) {
+        const patchedMovie: Movie | undefined = movieCatalog.update(firstMovie.id, safeMovieUpdate);
+        console.log('[sanitizePartial] movieCatalog.update with Partial:', patchedMovie);
+
+        const summaries: MovieSummary[] = movieCatalog.getAll().map(MovieMapper.toSummary);
+        console.log('[Pick] MovieSummary list:', summaries);
+    }
+
+    const corruptReviewPayload: Partial<ReviewRawDTO> = {
+        reviewer_name: 'Ana',
+    };
+    const safeReviewUpdate: ReviewSafeUpdate = ReviewMapper.sanitizePartial(corruptReviewPayload);
+    console.log('[sanitizePartial] ReviewSafeUpdate:', safeReviewUpdate);
+
+    const corruptAdPayload: Partial<AdRawDTO> = {
+        discount_percentage: '25',
+    };
+    const safeAdUpdate: AdSafeUpdate = AdMapper.sanitizePartial(corruptAdPayload);
+    console.log('[sanitizePartial] AdSafeUpdate:', safeAdUpdate);
+}
 
 function applyTranslations(): void {
     document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -111,6 +183,8 @@ async function cargarPlataforma(): Promise<void> {
     try {
         const movieDTOs = await getMovies();
         state.movies = movieDTOs.map(MovieMapper.toDomain);
+        movieCatalog.addMany(state.movies);
+        demonstrateCatalogPolymorphism();
     } catch (err) {
         console.warn('API de OMDb no disponible:', err);
         showToast('API Ocupada - Intenta de nuevo más tarde', 'fa-triangle-exclamation', 'text-amber-400');

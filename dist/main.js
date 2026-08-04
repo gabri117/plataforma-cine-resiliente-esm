@@ -7,11 +7,64 @@ import { MovieMapper } from './mappers/movies.mapper.js';
 import { ReviewMapper } from './mappers/reviews.mapper.js';
 import { AdMapper } from './mappers/ads.mapper.js';
 import { crearFiltroPeliculas } from './cache/movie.cache.js';
+import { DataCatalogManager } from './repository/data-catalog-manager.js';
 import { renderGrid, updateHeroBanner, showToast, closeModal, openDetailModalById, openTicketModalById, toggleFavorite, filterAndRenderMovies, showAdsBanner, updateHeroReviews, showSkeletons } from './ui/render.js';
 window.openDetailModalById = openDetailModalById;
 window.openTicketModalById = openTicketModalById;
 window.toggleFavorite = toggleFavorite;
 const filtroCache = crearFiltroPeliculas(getMoviesByGenre);
+const movieCatalog = new DataCatalogManager();
+const seriesCatalog = new DataCatalogManager();
+const docCatalog = new DataCatalogManager();
+const sampleSeries = [
+    { id: 's1', title: 'Breaking Bad', seasons: 5, isOngoing: false },
+    { id: 's2', title: 'The Last of Us', seasons: 2, isOngoing: true },
+    { id: 's3', title: 'Dark', seasons: 3, isOngoing: false },
+    { id: 's4', title: 'Severance', seasons: 2, isOngoing: true },
+];
+const sampleDocumentaries = [
+    { id: 'd1', title: 'Planet Earth', director: 'Alastair Fothergill', durationMinutes: 550 },
+    { id: 'd2', title: 'The Social Dilemma', director: 'Jeff Orlowski', durationMinutes: 94 },
+    { id: 'd3', title: 'Free Solo', director: 'Elizabeth Chai Vasarhelyi', durationMinutes: 100 },
+    { id: 'd4', title: 'Our Planet', director: 'Adam Chapman', durationMinutes: 400 },
+];
+seriesCatalog.addMany(sampleSeries);
+docCatalog.addMany(sampleDocumentaries);
+function demonstrateCatalogPolymorphism() {
+    const topRated = movieCatalog.filter((m) => m.isTopRated);
+    console.log('[DataCatalogManager] Top-rated movies:', topRated.map((m) => m.title));
+    const seriesById = seriesCatalog.getById('s2');
+    console.log('[DataCatalogManager] Series by id s2:', seriesById);
+    const updatedDoc = docCatalog.update('d2', {
+        durationMinutes: 98,
+        title: 'The Social Dilemma (Extended)',
+    });
+    console.log('[DataCatalogManager] Updated documentary:', updatedDoc);
+    console.log('[DataCatalogManager] Counts — movies:', movieCatalog.count(), 'series:', seriesCatalog.count(), 'docs:', docCatalog.count());
+    const corruptMoviePayload = {
+        Genre: 'Drama',
+        imdbRating: '9.1',
+    };
+    const safeMovieUpdate = MovieMapper.sanitizePartial(corruptMoviePayload);
+    console.log('[sanitizePartial] MovieSafeUpdate from corrupt payload:', safeMovieUpdate);
+    const firstMovie = movieCatalog.getAll()[0];
+    if (firstMovie) {
+        const patchedMovie = movieCatalog.update(firstMovie.id, safeMovieUpdate);
+        console.log('[sanitizePartial] movieCatalog.update with Partial:', patchedMovie);
+        const summaries = movieCatalog.getAll().map(MovieMapper.toSummary);
+        console.log('[Pick] MovieSummary list:', summaries);
+    }
+    const corruptReviewPayload = {
+        reviewer_name: 'Ana',
+    };
+    const safeReviewUpdate = ReviewMapper.sanitizePartial(corruptReviewPayload);
+    console.log('[sanitizePartial] ReviewSafeUpdate:', safeReviewUpdate);
+    const corruptAdPayload = {
+        discount_percentage: '25',
+    };
+    const safeAdUpdate = AdMapper.sanitizePartial(corruptAdPayload);
+    console.log('[sanitizePartial] AdSafeUpdate:', safeAdUpdate);
+}
 function applyTranslations() {
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
@@ -74,6 +127,8 @@ async function cargarPlataforma() {
     try {
         const movieDTOs = await getMovies();
         state.movies = movieDTOs.map(MovieMapper.toDomain);
+        movieCatalog.addMany(state.movies);
+        demonstrateCatalogPolymorphism();
     }
     catch (err) {
         console.warn('API de OMDb no disponible:', err);
